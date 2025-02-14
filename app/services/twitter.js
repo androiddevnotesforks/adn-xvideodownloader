@@ -8,8 +8,11 @@ import { createUrlWithParams } from '../utils/url';
  */
 export async function fetchTweetData(tweetId) {
   const url = createUrlWithParams(
-    `${TWITTER_API_CONFIG.baseUrl}/notifications/all.json`,
-    TWITTER_API_CONFIG.defaultParams
+    `${TWITTER_API_CONFIG.baseUrl}/timeline/conversation/${tweetId}.json`,
+    {
+      ...TWITTER_API_CONFIG.defaultParams,
+      tweet_mode: 'extended'
+    }
   );
 
   const response = await fetch(url, {
@@ -20,10 +23,37 @@ export async function fetchTweetData(tweetId) {
   });
 
   if (!response.ok) {
+    const text = await response.text();
+    console.error('API Error Response:', text);
     throw new Error('Failed to fetch tweet data');
   }
 
-  return response.json();
+  const data = await response.json();
+  
+  // If we don't have the tweet in globalObjects, try to find it in the timeline entries
+  if (!data.globalObjects?.tweets?.[tweetId] && data.timeline?.instructions) {
+    const entries = data.timeline.instructions
+      .find(i => i.addEntries)?.addEntries?.entries || [];
+      
+    const tweetEntry = entries.find(e => 
+      e.content?.item?.content?.tweet?.id === tweetId ||
+      e.content?.itemContent?.tweet?.id === tweetId
+    );
+
+    if (tweetEntry) {
+      const tweet = tweetEntry.content?.item?.content?.tweet || 
+                   tweetEntry.content?.itemContent?.tweet;
+      
+      // Add the tweet to globalObjects if it doesn't exist
+      if (tweet) {
+        data.globalObjects = data.globalObjects || { tweets: {} };
+        data.globalObjects.tweets = data.globalObjects.tweets || {};
+        data.globalObjects.tweets[tweetId] = tweet;
+      }
+    }
+  }
+
+  return data;
 }
 
 /**
@@ -33,16 +63,29 @@ export async function fetchTweetData(tweetId) {
  * @returns {Object|null} The video information or null if not found
  */
 export function extractVideoInfo(tweetData, tweetId) {
-  const tweet = tweetData.globalObjects.tweets[tweetId];
-  if (!tweet?.extended_entities?.media?.[0]?.video_info?.variants) {
+  const tweet = tweetData.globalObjects?.tweets?.[tweetId];
+  if (!tweet) {
+    console.error('Tweet not found in response');
     return null;
   }
 
-  const variants = tweet.extended_entities.media[0].video_info.variants
+  // Check both extended_entities and legacy fields for video info
+  const mediaContainer = tweet.extended_entities || tweet.legacy?.extended_entities;
+  if (!mediaContainer?.media?.[0]?.video_info?.variants) {
+    console.error('No video info found in tweet');
+    return null;
+  }
+
+  const variants = mediaContainer.media[0].video_info.variants
     .filter(v => v.content_type === 'video/mp4')
     .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
-  return variants.length ? variants[0] : null;
+  if (!variants.length) {
+    console.error('No MP4 variants found');
+    return null;
+  }
+
+  return variants[0];
 }
 
 /**

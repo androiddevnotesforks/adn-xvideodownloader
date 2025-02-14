@@ -9,6 +9,13 @@ export const TWITTER_API_CONFIG = {
     'x-twitter-client-language': 'en',
     'x-twitter-active-user': 'yes',
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'DNT': '1',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Dest': 'empty',
     'Cookie': process.env.TWITTER_AUTH_COOKIE
   },
   defaultParams: {
@@ -40,8 +47,8 @@ export const TWITTER_API_CONFIG = {
     'include_ext_trusted_friends_metadata': 'true',
     'send_error_codes': 'true',
     'simple_quoted_tweet': 'true',
+    'include_ext_media_stats': 'true',
     'count': '20',
-    'requestContext': 'launch',
-    'ext': 'mediaStats,highlightedLabel,parodyCommentaryFanLabel,voiceInfo,birdwatchPivot,superFollowMetadata,unmentionInfo,editControl,article'
+    'ext': 'mediaStats,highlightedLabel,hasNftAvatar,voiceInfo,birdwatchPivot,superFollowMetadata,unmentionInfo,editControl'
   }
 }; 
